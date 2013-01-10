@@ -62,6 +62,14 @@
   e.g. (play-note {:part :bass :time _})"
   :part)
 
+(defmulti note-on
+  "Start a note according to its :part."
+  :part)
+
+(defmulti note-off
+  "Stop a note according to its :part."
+  :part)
+
 (defn- trickle [notes]
   (if-let [{epoch :time :as note} (first notes)]
     (do
@@ -78,4 +86,19 @@
     (after (now))
     trickle
     (map (fn [{epoch :time :as note}] (at epoch (play-note note))))
+    dorun))
+
+(defn play2
+  "Plays notes now for an instrument that takes note-on/note-off combos
+  e.g. (->> melody play)"
+  [notes] 
+  (->>
+    notes
+    (after (now))
+    trickle
+    (map (fn [{epoch :time
+              duration :duration
+              :as note}]
+           (let [cur-inst (at epoch (note-on note))]
+             (at (+ epoch duration) (note-off note cur-inst)))))
     dorun))
