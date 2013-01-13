@@ -9,12 +9,16 @@
 
 (defn- sum-n [series n] (reduce + (take n series)))
 (defn phrase
-  "Translates a sequence of durations and pitches into a melody.
-  e.g. (phrase [1 1 2] [7 6 4])" 
-  [durations pitches]
-  (let [timings (map (partial sum-n durations) (range))]
-    (map #(zipmap [:time :pitch :duration] [%1 %2 %3])
-         timings pitches durations)))
+  "Translates a sequence of durations, pitches and optional velocities into a melody.
+  e.g. (phrase [1 1 2] [7 6 4])"
+  ([durations pitches]
+     (let [timings (map (partial sum-n durations) (range))]
+       (map #(zipmap [:time :pitch :duration] [%1 %2 %3])
+            timings pitches durations)))
+  ([durations pitches velocities]
+     (let [timings (map (partial sum-n durations) (range))]
+       (map #(zipmap [:time :pitch :duration :velocity] [%1 %2 %3 %4])
+            timings pitches durations velocities))))
 
 (defn where
   "Applies f to the k key of each note in notes.
@@ -62,12 +66,9 @@
   e.g. (play-note {:part :bass :time _})"
   :part)
 
-(defmulti note-on
-  "Start a note according to its :part."
-  :part)
-
-(defmulti note-off
-  "Stop a note according to its :part."
+(defmulti stop-note
+  "Stop a note according to its :part
+  e.g. (stop-note {:part :bass :time _} cur-inst)"
   :part)
 
 (defn- trickle [notes]
@@ -89,7 +90,7 @@
     dorun))
 
 (defn play2
-  "Plays notes now for an instrument that takes note-on/note-off combos
+  "Play and stop notes now.
   e.g. (->> melody play)"
   [notes] 
   (->>
@@ -99,6 +100,6 @@
     (map (fn [{epoch :time
               duration :duration
               :as note}]
-           (let [cur-inst (at epoch (note-on note))]
-             (at (+ epoch duration) (note-off note cur-inst)))))
+           (let [cur-inst (at epoch (play-note note))]
+             (at (+ epoch duration) (stop-note note cur-inst)))))
     dorun))
